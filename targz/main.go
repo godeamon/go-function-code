@@ -139,7 +139,6 @@ func TarGz(srcPath string, destFile string, flag int) error {
 
 	} else {
 		// handle file directly
-		tarGzFile(srcPath, path.Base(srcPath), tw, fi)
 		if flag == 0 {
 			err := tarGzFile(srcPath, path.Base(""), tw, fi)
 			if err != nil {
@@ -150,7 +149,6 @@ func TarGz(srcPath string, destFile string, flag int) error {
 			if err != nil {
 				return err
 			}
-
 		} else {
 			return errors.New("Invlaid flag")
 		}
