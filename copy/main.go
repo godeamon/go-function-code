@@ -10,48 +10,63 @@ import (
 	"strings"
 )
 
-// CopyDir copy srcPath dir to destPath dir but exclude srcPath dir,
+// CopyDir copy files and sub dirs in srcPath dir to destPath dir,
 // srcPath and destPath must exist.
-// copy file that name match matchPattern and not match excludePattern
-func CopyDir(srcPath, destPath, matchPattern, excludePattern string) error {
+// copy files that name match with matchRegexp and not match with excludeRegexp
+// matchRegexp: (.go)$
+// excludeRegexp: (.txt)$
+func CopyDir(srcPath, destPath, matchRegexp, excludeRegexp string) error {
+
+	srcPath = strings.Replace(srcPath, "\\", "/", -1)
+	destPath = strings.Replace(destPath, "\\", "/", -1)
 
 	if srcInfo, err := os.Stat(srcPath); err != nil {
 		return err
 	} else {
 		if !srcInfo.IsDir() {
-			e := errors.New("srcPath is not a dir")
-			return e
+			return errors.New("open " + srcPath + ": is not a directory")
 		}
 	}
 	if destInfo, err := os.Stat(destPath); err != nil {
 		return err
 	} else {
 		if !destInfo.IsDir() {
-			e := errors.New("destInfo is not a dir")
-			return e
+			return errors.New("open " + destPath + ": is not a directory")
 		}
 	}
 
 	err := filepath.Walk(srcPath, func(path string, f os.FileInfo, err error) error {
-		if f == nil {
+		if err != nil {
 			return err
 		}
-		match, errmc := regexp.MatchString(matchPattern, f.Name())
-		if errmc != nil {
-			return errors.New(errmc.Error())
-		}
 
-		exclude, errex := regexp.MatchString(excludePattern, f.Name())
-		if errex != nil {
-			return errors.New(errmc.Error())
-		}
+		if matchRegexp == "" && excludeRegexp == "" {
+			if !f.IsDir() {
+				path = strings.Replace(path, "\\", "/", -1)
+				destNewPath := strings.Replace(path, srcPath, destPath, -1)
+				_, err := CopyFile(path, destNewPath)
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			match, errmc := regexp.MatchString(matchRegexp, f.Name())
+			if errmc != nil {
+				return errors.New(errmc.Error())
+			}
 
-		if !f.IsDir() && match && !exclude {
-			path := strings.Replace(path, "\\", "/", -1)
-			destNewPath := strings.Replace(path, srcPath, destPath, -1)
-			_, err := CopyFile(path, destNewPath)
-			if err != nil {
-				return err
+			exclude, errex := regexp.MatchString(excludeRegexp, f.Name())
+			if errex != nil {
+				return errors.New(errmc.Error())
+			}
+
+			if !f.IsDir() && match && !exclude {
+				path = strings.Replace(path, "\\", "/", -1)
+				destNewPath := strings.Replace(path, srcPath, destPath, -1)
+				_, err := CopyFile(path, destNewPath)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -63,6 +78,8 @@ func CopyDir(srcPath, destPath, matchPattern, excludePattern string) error {
 
 // CopyFile copy src file to dest
 func CopyFile(src, dest string) (w int64, err error) {
+	src = strings.Replace(src, "\\", "/", -1)
+	dest = strings.Replace(dest, "\\", "/", -1)
 
 	srcFile, err := os.Open(src)
 	if err != nil {
