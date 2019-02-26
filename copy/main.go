@@ -2,15 +2,18 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 // CopyDir copy srcPath dir to destPath dir but exclude srcPath dir,
 // srcPath and destPath must exist.
-func CopyDir(srcPath string, destPath string) error {
+// copy file that name match matchPattern and not match excludePattern
+func CopyDir(srcPath, destPath, matchPattern, excludePattern string) error {
 
 	if srcInfo, err := os.Stat(srcPath); err != nil {
 		return err
@@ -33,18 +36,33 @@ func CopyDir(srcPath string, destPath string) error {
 		if f == nil {
 			return err
 		}
-		if !f.IsDir() && !strings.HasSuffix(f.Name(), "_test.go") && !strings.Contains(f.Name(), "_autogen_") {
+		match, errmc := regexp.MatchString(matchPattern, f.Name())
+		if errmc != nil {
+			return errors.New(errmc.Error())
+		}
+
+		exclude, errex := regexp.MatchString(excludePattern, f.Name())
+		if errex != nil {
+			return errors.New(errmc.Error())
+		}
+
+		if !f.IsDir() && match && !exclude {
 			path := strings.Replace(path, "\\", "/", -1)
 			destNewPath := strings.Replace(path, srcPath, destPath, -1)
-			copyFile(path, destNewPath)
+			_, err := CopyFile(path, destNewPath)
+			if err != nil {
+				return err
+			}
 		}
+
 		return nil
 	})
 
 	return err
 }
 
-func copyFile(src, dest string) (w int64, err error) {
+// CopyFile copy src file to dest
+func CopyFile(src, dest string) (w int64, err error) {
 
 	srcFile, err := os.Open(src)
 	if err != nil {
@@ -93,9 +111,12 @@ func pathExists(path string) (bool, error) {
 }
 
 func main() {
-	err := CopyDir("/Users/test/srcPath", "/Users/test/destPath")
-	if err != nil{
-		panic(err)
+	err := CopyDir("/Users/test/copy/a", "/Users/test/copy/b", "(.go)$", "(_notCopy_)")
+	if err != nil {
+		fmt.Println(err)
 	}
-}
 
+	w, e := CopyFile("/Users/test/copy/a/told.go", "/Users/test/copy/b/new.go")
+	fmt.Println(w)
+	fmt.Println(e)
+}
